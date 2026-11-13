@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>教師介面｜紅茶搶購站</title>
+<style>
+  :root { --red:#b3261e; --red-dark:#7d1a15; --cream:#fff8ef; --ink:#2b2118; --muted:#7a6a5c; --line:#ead9c6; --ok:#2e7d32; --blue:#1f4e8c; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; background:var(--cream); color:var(--ink); }
+  header { background:var(--blue); color:#fff; padding:12px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  header h1 { font-size:20px; margin:0; margin-right:auto; }
+  main { max-width:1100px; margin:22px auto; padding:0 16px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:18px; }
+  .hidden { display:none !important; }
+  h2 { margin:0 0 12px; font-size:19px; }
+  input[type=password] { padding:10px 12px; border:1px solid var(--line); border-radius:8px; font-size:16px; width:260px; }
+  button { background:var(--blue); color:#fff; border:0; border-radius:8px; padding:9px 18px; font-size:15px; cursor:pointer; }
+  button:hover { filter:brightness(1.1); }
+  button:disabled, button.green:disabled, button.red:disabled { background:#ccc; color:#fff; cursor:not-allowed; filter:none; }
+  button.red { background:var(--red); } button.green { background:var(--ok); } button.ghost { background:transparent; color:#fff; border:1px solid rgba(255,255,255,.6); }
+  .msg { margin-top:12px; padding:10px 12px; border-radius:8px; background:#fdecea; color:var(--red-dark); }
+  .bar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .big { font-size:26px; font-weight:700; }
+  .stat { background:var(--cream); border:1px solid var(--line); border-radius:10px; padding:10px 16px; }
+  .stat .muted { font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  th { color:var(--muted); font-weight:600; }
+  .tag { display:inline-block; padding:2px 8px; border-radius:999px; font-size:13px; }
+  .tag.live { background:#e8f5e9; color:var(--ok); } .tag.wait { background:#fff3cd; } .tag.done { background:#eee; color:#777; } .tag.pause { background:#fdecea; color:var(--red-dark); }
+  .muted { color:var(--muted); }
+  .codes span { display:inline-block; margin:1px 4px 1px 0; padding:1px 6px; border-radius:6px; background:#f3ece4; font-size:12px; }
+  .codes span.OK { background:#e8f5e9; color:var(--ok); }
+  label.auto { font-size:14px; display:flex; align-items:center; gap:6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>教師介面｜紅茶搶購站</h1>
+  <span id="updated" class="hidden" style="font-size:13px;opacity:.85"></span>
+  <button id="logout" class="ghost hidden">登出</button>
+</header>
+
+<main>
+  <!-- 登入 -->
+  <section id="loginBox" class="card">
+    <h2>請輸入教師密碼</h2>
+    <form id="loginForm" class="bar">
+      <input type="password" id="pw" placeholder="教師密碼" required autofocus>
+      <button type="submit">進入</button>
+    </form>
+    <div id="loginMsg"></div>
+  </section>
+
+  <!-- 主畫面 -->
+  <section id="dash" class="hidden">
+    <div class="card">
+      <div class="bar" style="justify-content:space-between">
+        <div class="bar">
+          <div class="stat"><div class="muted">目前販售</div><div class="big" id="sNow">—</div></div>
+          <div class="stat"><div class="muted">已售出</div><div class="big"><span id="sSold">0</span> / <span id="sTotal">0</span></div></div>
+          <div class="stat"><div class="muted">註冊人數</div><div class="big" id="sUsers">0</div></div>
+        </div>
+        <div class="bar">
+          <label class="auto"><input type="checkbox" id="auto" checked> 每 5 秒自動更新</label>
+          <button id="refresh">重新整理</button>
+          <button id="pause" class="red">暫停販售</button>
+        </div>
+      </div>
+      <div id="dashMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>場次（一次只會開放一組）</h2>
+      <table>
+        <thead><tr><th>場次</th><th>開賣時間</th><th>已售 / 庫存</th><th>狀態</th><th></th></tr></thead>
+        <tbody id="rounds"></tbody>
+      </table>
+      <p class="muted" style="font-size:13px">按「立即開放」後，該組馬上開賣，正在賣的那一組會同時結束。設定為自動排程時，原定時間到了，該組一樣會自動開賣。</p>
+    </div>
+
+    <div class="card">
+      <h2>得標名單</h2>
+      <table>
+        <thead><tr><th>場次</th><th>帳號</th><th>Email</th><th>收件人</th><th>電話</th><th>地址</th><th>開賣後</th><th>成立時間</th></tr></thead>
+        <tbody id="orders"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>學生搶購嘗試紀錄</h2>
+      <table>
+        <thead><tr><th>帳號</th><th>嘗試次數</th><th>第一次送出</th><th>結果分布</th></tr></thead>
+        <tbody id="attempts"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>重新開始</h2>
+      <p class="muted">清空所有訂單和紀錄，場次回到原定設定。學生帳號會保留。</p>
+      <button id="reset" class="red">清空並重新開始</button>
+    </div>
+  </section>
+</main>
+
+<script>
+// ===== 老師設定：與 index.html 相同的 Apps Script 網址 =====
+const API_URL = 'https://script.google.com/macros/s/請貼上你的部署ID/exec';
+// =========================================================
+
+let adminPassword = null;
+try { adminPassword = sessionStorage.getItem('adminPassword'); } catch (e) {}
+let timer = null;
+
+async function api(action, data = {}) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, adminPassword, ...data }),
+  });
+  return res.json();
+}
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const $ = id => document.getElementById(id);
+const CODE_NAMES = { OK:'成功', NOT_STARTED:'未開賣', SOLD_OUT:'售完', PAUSED:'暫停', RATE_LIMITED:'太頻繁', BUSY:'忙碌', ALREADY_BOUGHT:'已買過', WRONG_PASSWORD:'密碼錯', BAD_QTY:'數量錯', BAD_PAYMENT:'付款錯', BAD_PHONE:'電話錯', BAD_RECEIVER:'缺收件人', BAD_ADDRESS:'缺地址' };
+
+function showDash(on) {
+  $('loginBox').classList.toggle('hidden', on);
+  $('dash').classList.toggle('hidden', !on);
+  $('logout').classList.toggle('hidden', !on);
+  $('updated').classList.toggle('hidden', !on);
+}
+
+function render(d) {
+  $('sNow').innerHTML = d.paused ? '<span class="tag pause">暫停中</span>' : (d.currentRoundId || '—');
+  const sold = d.rounds.reduce((a, r) => a + r.sold, 0), total = d.rounds.reduce((a, r) => a + r.stock, 0);
+  $('sSold').textContent = sold; $('sTotal').textContent = total; $('sUsers').textContent = d.userCount;
+
+  const now = d.serverTime;
+  let curId = null;
+  d.rounds.forEach(r => { if (r.startMs !== null && r.startMs <= now) curId = r.id; });
+  $('rounds').innerHTML = d.rounds.map(r => {
+    let tag;
+    if (r.id === curId && d.paused) tag = '<span class="tag pause">暫停中</span>';
+    else if (r.id === curId) tag = r.remaining > 0 ? '<span class="tag live">販售中</span>' : '<span class="tag done">已售完</span>';
+    else if (r.startMs === null) tag = '<span class="tag wait">等待開放</span>';
+    else if (r.startMs > now) tag = '<span class="tag wait">排程中</span>';
+    else tag = '<span class="tag done">已結束</span>';
+    const isLive = r.id === curId && !d.paused && r.remaining > 0;
+    const btn = `<button class="green" data-open="${esc(r.id)}" ${r.remaining === 0 || isLive ? 'disabled' : ''}>立即開放</button>`;
+    return `<tr><td><b>${esc(r.id)}</b></td><td>${esc(r.startTime)}</td><td>${r.sold} / ${r.stock}</td><td>${tag}</td><td>${btn}</td></tr>`;
+  }).join('');
+  document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openRound(b.dataset.open));
+
+  $('orders').innerHTML = d.orders.length ? d.orders.map(o =>
+    `<tr><td>${esc(o.round)}</td><td><b>${esc(o.username)}</b></td><td>${esc(o.email)}</td><td>${esc(o.receiver)}</td><td>${esc(o.phone)}</td><td>${esc(o.address)}</td><td>${esc(o.msAfterOpen)} ms</td><td>${esc(String(o.time).slice(11))}</td></tr>`
+  ).join('') : '<tr><td colspan="8" class="muted">還沒有人搶到</td></tr>';
+
+  $('attempts').innerHTML = d.attempts.length ? d.attempts.map(a =>
+    `<tr><td>${esc(a.username)}</td><td>${a.attempts}</td><td>${esc(String(a.first).slice(11))}</td><td class="codes">${
+      Object.entries(a.codes).map(([k, v]) => `<span class="${esc(k)}">${esc(CODE_NAMES[k] || k)} ×${v}</span>`).join('')}</td></tr>`
+  ).join('') : '<tr><td colspan="4" class="muted">還沒有人送出購買</td></tr>';
+
+  $('updated').textContent = '更新於 ' + new Date().toLocaleTimeString('zh-TW', { hour12: false });
+}
+
+function handle(d, msgBox) {
+  if (d.ok) { $(msgBox).innerHTML = ''; render(d); return true; }
+  if (d.code === 'ADMIN_WRONG_PASSWORD' || d.code === 'ADMIN_LOCKED') { logout(); $('loginMsg').innerHTML = `<div class="msg">${esc(d.message)}</div>`; return false; }
+  $(msgBox).innerHTML = `<div class="msg">${esc(d.message)}</div>`;
+  return false;
+}
+
+async function load() {
+  try { handle(await api('admin_overview'), 'dashMsg'); }
+  catch (e) { $('dashMsg').innerHTML = `<div class="msg">連線失敗：${esc(e.message)}</div>`; }
+}
+
+async function openRound(id) {
+  if (!confirm(`確定要立即開放 ${id}？正在販售的場次會同時結束。`)) return;
+  handle(await api('admin_open', { roundId: id }), 'dashMsg');
+}
+
+$('pause').onclick = async () => { handle(await api('admin_pause'), 'dashMsg'); };
+$('refresh').onclick = load;
+$('reset').onclick = async () => {
+  if (!confirm('確定要清空所有訂單和紀錄嗎？這個動作無法復原。')) return;
+  handle(await api('admin_reset', { confirm: 'RESET' }), 'dashMsg');
+};
+$('auto').onchange = startTimer;
+
+function startTimer() {
+  clearInterval(timer);
+  if ($('auto').checked && adminPassword) timer = setInterval(load, 5000);
+}
+
+$('loginForm').onsubmit = async e => {
+  e.preventDefault();
+  adminPassword = $('pw').value;
+  const d = await api('admin_overview');
+  if (d.ok) {
+    try { sessionStorage.setItem('adminPassword', adminPassword); } catch (e) {}
+    $('pw').value = ''; $('loginMsg').innerHTML = '';
+    showDash(true); render(d); startTimer();
+  } else {
+    adminPassword = null;
+    $('loginMsg').innerHTML = `<div class="msg">${esc(d.message)}</div>`;
+  }
+};
+
+function logout() {
+  adminPassword = null;
+  try { sessionStorage.removeItem('adminPassword'); } catch (e) {}
+  clearInterval(timer); showDash(false);
+}
+$('logout').onclick = logout;
+
+if (adminPassword) { showDash(true); load(); startTimer(); }
+</script>
+</body>
+</html>

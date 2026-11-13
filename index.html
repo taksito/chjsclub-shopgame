@@ -198,6 +198,7 @@ window.addEventListener('hashchange', route);
 
 // ===== 商品頁：場次與倒數 =====
 let rounds = [];
+let paused = false;
 let offset = 0; // 伺服器時間 - 本機時間
 
 async function loadStatus() {
@@ -208,6 +209,7 @@ async function loadStatus() {
     if (!r.ok) return;
     offset = r.serverTime - (t0 + t1) / 2;
     rounds = r.rounds;
+    paused = r.paused;
     document.getElementById('pName').textContent = r.product.name;
     document.getElementById('cName').textContent = r.product.name;
     document.getElementById('pPrice').textContent = r.product.price;
@@ -221,10 +223,12 @@ function nowServer() { return Date.now() + offset; }
 function renderRounds() {
   const now = nowServer();
   let curIdx = -1;
-  rounds.forEach((r, i) => { if (r.startMs <= now) curIdx = i; });
+  rounds.forEach((r, i) => { if (r.startMs !== null && r.startMs <= now) curIdx = i; });
   document.getElementById('roundRows').innerHTML = rounds.map((r, i) => {
     let tag;
-    if (i === curIdx) tag = r.remaining > 0 ? '<span class="tag live">搶購中</span>' : '<span class="tag done">已售完</span>';
+    if (i === curIdx && paused) tag = '<span class="tag wait">暫停中</span>';
+    else if (i === curIdx) tag = r.remaining > 0 ? '<span class="tag live">搶購中</span>' : '<span class="tag done">已售完</span>';
+    else if (r.startMs === null) tag = '<span class="tag wait">等待老師開放</span>';
     else if (r.startMs > now) tag = '<span class="tag wait">未開賣</span>';
     else tag = '<span class="tag done">已結束</span>';
     return `<tr><td>${r.id}</td><td>${escapeHtml(r.startTime)}</td><td>${r.remaining} / ${r.stock}</td><td>${tag}</td></tr>`;
@@ -233,7 +237,9 @@ function renderRounds() {
 
 function tick() {
   const now = nowServer();
-  const next = rounds.find(r => r.startMs > now);
+  const next = rounds.find(r => r.startMs !== null && r.startMs > now);
+  let curR = null;
+  rounds.forEach(r => { if (r.startMs !== null && r.startMs <= now) curR = r; });
   const cd = document.getElementById('countdown');
   const label = document.getElementById('cdLabel');
   if (next) {
@@ -243,9 +249,12 @@ function tick() {
     const sec = String(s % 60).padStart(2, '0');
     label.textContent = `距離 ${next.id} 開賣（${next.startTime.slice(11)}）`;
     cd.textContent = `${h}:${m}:${sec}`;
+  } else if (curR && !paused && curR.remaining > 0) {
+    label.textContent = `${curR.id} 搶購中！`;
+    cd.textContent = '開賣中';
   } else {
-    label.textContent = rounds.length ? '今日場次已全部開賣' : '';
-    cd.textContent = rounds.length ? '—' : '--:--:--';
+    label.textContent = paused ? '老師已暫停販售' : '等待下一場開放';
+    cd.textContent = '—';
   }
   // 剛好跨過開賣時間時，更新表格狀態
   renderRounds();
