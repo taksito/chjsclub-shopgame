@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>限量紅茶搶購站</title>
+<style>
+  :root { --red:#b3261e; --red-dark:#7d1a15; --cream:#fff8ef; --ink:#2b2118; --muted:#7a6a5c; --line:#ead9c6; --ok:#2e7d32; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; background:var(--cream); color:var(--ink); }
+  header { background:var(--red); color:#fff; padding:12px 20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  header h1 { font-size:20px; margin:0; margin-right:auto; }
+  header a { color:#fff; text-decoration:none; font-size:15px; opacity:.9; }
+  header a:hover { opacity:1; text-decoration:underline; }
+  #who { font-size:14px; background:rgba(255,255,255,.15); padding:4px 10px; border-radius:999px; }
+  main { max-width:860px; margin:24px auto; padding:0 16px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:22px; margin-bottom:18px; }
+  .hidden { display:none !important; }
+  h2 { margin-top:0; }
+  label { display:block; margin:12px 0 4px; font-weight:600; font-size:14px; }
+  input[type=text], input[type=password], input[type=email], input[type=tel] { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px; font-size:16px; }
+  button { background:var(--red); color:#fff; border:0; border-radius:8px; padding:11px 22px; font-size:16px; cursor:pointer; margin-top:16px; }
+  button:hover { background:var(--red-dark); }
+  button:disabled { background:#bbb; cursor:wait; }
+  .msg { margin-top:14px; padding:10px 12px; border-radius:8px; font-size:15px; }
+  .msg.ok { background:#e8f5e9; color:var(--ok); }
+  .msg.err { background:#fdecea; color:var(--red-dark); }
+  .product { display:flex; gap:28px; align-items:center; flex-wrap:wrap; }
+  .price { font-size:32px; color:var(--red); font-weight:700; }
+  .countdown { font-size:28px; font-variant-numeric:tabular-nums; font-weight:700; }
+  table { width:100%; border-collapse:collapse; font-size:15px; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); }
+  .tag { display:inline-block; padding:2px 8px; border-radius:999px; font-size:13px; }
+  .tag.wait { background:#fff3cd; } .tag.live { background:#e8f5e9; color:var(--ok); } .tag.done { background:#eee; color:#777; }
+  .muted { color:var(--muted); font-size:14px; }
+  .radio { display:flex; align-items:center; gap:8px; margin-top:6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>限量紅茶搶購站</h1>
+  <a href="#shop">商品</a>
+  <a href="#results">搶購結果</a>
+  <a href="#orders" class="need-login">我的訂單</a>
+  <a href="#login" class="need-logout">登入</a>
+  <a href="#register" class="need-logout">註冊</a>
+  <a href="#" id="logoutLink" class="need-login">登出</a>
+  <span id="who" class="need-login"></span>
+</header>
+
+<main>
+  <!-- 商品頁 -->
+  <section id="page-shop">
+    <div class="card product">
+      <svg width="120" height="200" viewBox="0 0 120 200" aria-label="紅茶罐">
+        <rect x="14" y="14" width="92" height="176" rx="14" fill="#b3261e"/>
+        <rect x="14" y="14" width="92" height="20" rx="8" fill="#c9c9c9"/>
+        <rect x="14" y="172" width="92" height="18" rx="8" fill="#c9c9c9"/>
+        <rect x="22" y="70" width="76" height="70" rx="6" fill="#fff8ef"/>
+        <text x="60" y="102" text-anchor="middle" font-size="22" font-weight="700" fill="#7d1a15">紅茶</text>
+        <text x="60" y="126" text-anchor="middle" font-size="11" fill="#7d1a15">BLACK TEA</text>
+        <rect x="26" y="40" width="8" height="120" rx="4" fill="rgba(255,255,255,.25)"/>
+      </svg>
+      <div style="flex:1;min-width:240px">
+        <h2 id="pName">古早味紅茶（罐裝）</h2>
+        <div class="price">NT$ <span id="pPrice">10</span></div>
+        <p class="muted">每人限購 1 罐｜只接受貨到付款｜每場 2 罐</p>
+        <div id="liveBox">
+          <div class="muted" id="cdLabel">距離下一場開賣</div>
+          <div class="countdown" id="countdown">--:--:--</div>
+        </div>
+        <button id="goBuy">立即搶購</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>今日場次</h2>
+      <table>
+        <thead><tr><th>場次</th><th>開賣時間</th><th>剩餘</th><th>狀態</th></tr></thead>
+        <tbody id="roundRows"><tr><td colspan="4" class="muted">載入中…</td></tr></tbody>
+      </table>
+      <p class="muted">時間以伺服器時間為準。下一場開始時，上一場就結束。</p>
+    </div>
+  </section>
+
+  <!-- 註冊 -->
+  <section id="page-register" class="hidden">
+    <div class="card">
+      <h2>註冊帳號</h2>
+      <form id="regForm">
+        <label>帳號（3～20 個英文、數字或底線）</label><input type="text" name="username" required>
+        <label>密碼（4～30 字元）</label><input type="password" name="password" required>
+        <label>Email</label><input type="email" name="email" required>
+        <button type="submit">註冊</button>
+      </form>
+      <div id="regMsg"></div>
+    </div>
+  </section>
+
+  <!-- 登入 -->
+  <section id="page-login" class="hidden">
+    <div class="card">
+      <h2>登入</h2>
+      <form id="loginForm">
+        <label>帳號</label><input type="text" name="username" required>
+        <label>密碼</label><input type="password" name="password" required>
+        <button type="submit">登入</button>
+      </form>
+      <div id="loginMsg"></div>
+    </div>
+  </section>
+
+  <!-- 結帳 -->
+  <section id="page-checkout" class="hidden">
+    <div class="card">
+      <h2>結帳</h2>
+      <p>商品：<b id="cName">古早味紅茶（罐裝）</b> × 1　金額：<b>NT$ <span id="cPrice">10</span></b></p>
+      <form id="buyForm">
+        <label>付款方式</label>
+        <div class="radio"><input type="radio" name="payment" value="COD" checked id="cod"><label for="cod" style="margin:0;font-weight:400">貨到付款</label></div>
+        <label>收件人</label><input type="text" name="receiver" required>
+        <label>手機（09 開頭 10 碼）</label><input type="tel" name="phone" required pattern="09\d{8}">
+        <label>地址</label><input type="text" name="address" required>
+        <label>請再次輸入密碼確認購買</label><input type="password" name="password" required>
+        <button type="submit">確認購買</button>
+      </form>
+      <div id="buyMsg"></div>
+    </div>
+  </section>
+
+  <!-- 我的訂單 -->
+  <section id="page-orders" class="hidden">
+    <div class="card">
+      <h2>我的訂單</h2>
+      <div id="orderList" class="muted">載入中…</div>
+    </div>
+  </section>
+
+  <!-- 結果 -->
+  <section id="page-results" class="hidden">
+    <div class="card">
+      <h2>搶購結果</h2>
+      <table>
+        <thead><tr><th>場次</th><th>開賣時間</th><th>得標者</th><th>開賣後</th></tr></thead>
+        <tbody id="resultRows"><tr><td colspan="4" class="muted">載入中…</td></tr></tbody>
+      </table>
+      <button id="refreshResults">重新整理</button>
+    </div>
+  </section>
+</main>
+
+<script>
+// ===== 老師設定：貼上 Apps Script 部署後的網址 =====
+const API_URL = 'https://script.google.com/macros/s/請貼上你的部署ID/exec';
+// =================================================
+
+// 所有請求都用 POST + JSON 文字（Content-Type 用 text/plain，避免跨網域預檢）
+async function api(action, data = {}) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, ...data }),
+  });
+  return res.json();
+}
+
+// 登入狀態（存在瀏覽器）
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} },
+};
+let token = store.get('token');
+let username = store.get('username');
+
+function refreshHeader() {
+  const inn = !!token;
+  document.querySelectorAll('.need-login').forEach(el => el.classList.toggle('hidden', !inn));
+  document.querySelectorAll('.need-logout').forEach(el => el.classList.toggle('hidden', inn));
+  document.getElementById('who').textContent = inn ? '👤 ' + username : '';
+}
+
+function showMsg(id, ok, text) {
+  document.getElementById(id).innerHTML = `<div class="msg ${ok ? 'ok' : 'err'}">${escapeHtml(text)}</div>`;
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+// ===== 頁面切換 =====
+const pages = ['shop', 'register', 'login', 'checkout', 'orders', 'results'];
+function route() {
+  let p = location.hash.replace('#', '') || 'shop';
+  if (!pages.includes(p)) p = 'shop';
+  if ((p === 'checkout' || p === 'orders') && !token) { location.hash = '#login'; return; }
+  pages.forEach(x => document.getElementById('page-' + x).classList.toggle('hidden', x !== p));
+  if (p === 'orders') loadOrders();
+  if (p === 'results') loadResults();
+}
+window.addEventListener('hashchange', route);
+
+// ===== 商品頁：場次與倒數 =====
+let rounds = [];
+let offset = 0; // 伺服器時間 - 本機時間
+
+async function loadStatus() {
+  try {
+    const t0 = Date.now();
+    const r = await api('status');
+    const t1 = Date.now();
+    if (!r.ok) return;
+    offset = r.serverTime - (t0 + t1) / 2;
+    rounds = r.rounds;
+    document.getElementById('pName').textContent = r.product.name;
+    document.getElementById('cName').textContent = r.product.name;
+    document.getElementById('pPrice').textContent = r.product.price;
+    document.getElementById('cPrice').textContent = r.product.price;
+    renderRounds();
+  } catch (e) { /* 網路錯誤時下次再試 */ }
+}
+
+function nowServer() { return Date.now() + offset; }
+
+function renderRounds() {
+  const now = nowServer();
+  let curIdx = -1;
+  rounds.forEach((r, i) => { if (r.startMs <= now) curIdx = i; });
+  document.getElementById('roundRows').innerHTML = rounds.map((r, i) => {
+    let tag;
+    if (i === curIdx) tag = r.remaining > 0 ? '<span class="tag live">搶購中</span>' : '<span class="tag done">已售完</span>';
+    else if (r.startMs > now) tag = '<span class="tag wait">未開賣</span>';
+    else tag = '<span class="tag done">已結束</span>';
+    return `<tr><td>${r.id}</td><td>${escapeHtml(r.startTime)}</td><td>${r.remaining} / ${r.stock}</td><td>${tag}</td></tr>`;
+  }).join('') || '<tr><td colspan="4" class="muted">尚未設定場次</td></tr>';
+}
+
+function tick() {
+  const now = nowServer();
+  const next = rounds.find(r => r.startMs > now);
+  const cd = document.getElementById('countdown');
+  const label = document.getElementById('cdLabel');
+  if (next) {
+    const s = Math.max(0, Math.floor((next.startMs - now) / 1000));
+    const h = String(Math.floor(s / 3600)).padStart(2, '0');
+    const m = String(Math.floor(s % 3600 / 60)).padStart(2, '0');
+    const sec = String(s % 60).padStart(2, '0');
+    label.textContent = `距離 ${next.id} 開賣（${next.startTime.slice(11)}）`;
+    cd.textContent = `${h}:${m}:${sec}`;
+  } else {
+    label.textContent = rounds.length ? '今日場次已全部開賣' : '';
+    cd.textContent = rounds.length ? '—' : '--:--:--';
+  }
+  // 剛好跨過開賣時間時，更新表格狀態
+  renderRounds();
+}
+
+document.getElementById('goBuy').onclick = () => { location.hash = token ? '#checkout' : '#login'; };
+
+// ===== 註冊 =====
+document.getElementById('regForm').onsubmit = async e => {
+  e.preventDefault();
+  const f = e.target, btn = f.querySelector('button');
+  btn.disabled = true;
+  try {
+    const r = await api('register', { username: f.username.value.trim(), password: f.password.value, email: f.email.value.trim() });
+    showMsg('regMsg', r.ok, r.message);
+    if (r.ok) { f.reset(); setTimeout(() => location.hash = '#login', 800); }
+  } catch (err) { showMsg('regMsg', false, '連線失敗：' + err.message); }
+  btn.disabled = false;
+};
+
+// ===== 登入 =====
+document.getElementById('loginForm').onsubmit = async e => {
+  e.preventDefault();
+  const f = e.target, btn = f.querySelector('button');
+  btn.disabled = true;
+  try {
+    const r = await api('login', { username: f.username.value.trim(), password: f.password.value });
+    if (r.ok) {
+      token = r.token; username = r.username;
+      store.set('token', token); store.set('username', username);
+      refreshHeader(); f.reset();
+      location.hash = '#shop';
+    } else showMsg('loginMsg', false, r.message);
+  } catch (err) { showMsg('loginMsg', false, '連線失敗：' + err.message); }
+  btn.disabled = false;
+};
+
+document.getElementById('logoutLink').onclick = e => {
+  e.preventDefault();
+  token = null; username = null;
+  store.del('token'); store.del('username');
+  refreshHeader(); location.hash = '#shop';
+};
+
+// ===== 結帳 =====
+document.getElementById('buyForm').onsubmit = async e => {
+  e.preventDefault();
+  const f = e.target, btn = f.querySelector('button');
+  btn.disabled = true;
+  try {
+    const r = await api('buy', {
+      token, qty: 1, payment: f.payment.value,
+      receiver: f.receiver.value.trim(), phone: f.phone.value.trim(), address: f.address.value.trim(),
+      password: f.password.value,
+    });
+    if (r.ok) showMsg('buyMsg', true, `${r.message} 訂單編號 ${r.order.orderId}（開賣後 ${r.order.msAfterOpen} 毫秒）`);
+    else {
+      let text = r.message;
+      if (r.nextRound) text += `，下一場 ${r.nextRound.startTime.slice(11)}`;
+      showMsg('buyMsg', false, text);
+      if (r.code === 'INVALID_TOKEN') { token = null; store.del('token'); refreshHeader(); }
+    }
+    loadStatus();
+  } catch (err) { showMsg('buyMsg', false, '連線失敗：' + err.message); }
+  f.password.value = '';
+  btn.disabled = false;
+};
+
+// ===== 我的訂單 =====
+async function loadOrders() {
+  const box = document.getElementById('orderList');
+  box.textContent = '載入中…';
+  try {
+    const r = await api('myOrders', { token });
+    if (!r.ok) { box.textContent = r.message; return; }
+    box.innerHTML = r.orders.length
+      ? '<table><tr><th>訂單編號</th><th>場次</th><th>金額</th><th>付款</th><th>時間</th></tr>' +
+        r.orders.map(o => `<tr><td>${escapeHtml(o.orderId)}</td><td>${o.round}</td><td>NT$ ${o.amount}</td><td>${escapeHtml(o.payment)}</td><td>${escapeHtml(o.time)}</td></tr>`).join('') + '</table>'
+      : '還沒有搶到喔！';
+  } catch (err) { box.textContent = '連線失敗'; }
+}
+
+// ===== 結果 =====
+async function loadResults() {
+  const tb = document.getElementById('resultRows');
+  try {
+    const r = await api('results');
+    tb.innerHTML = r.rounds.map(rd => {
+      if (!rd.winners.length) return `<tr><td>${rd.id}</td><td>${escapeHtml(rd.startTime)}</td><td class="muted">—</td><td></td></tr>`;
+      return rd.winners.map((w, i) => `<tr><td>${i ? '' : rd.id}</td><td>${i ? '' : escapeHtml(rd.startTime)}</td><td>🏆 ${escapeHtml(w.username)}</td><td>${w.msAfterOpen} ms</td></tr>`).join('');
+    }).join('');
+  } catch (err) { tb.innerHTML = '<tr><td colspan="4">連線失敗</td></tr>'; }
+}
+document.getElementById('refreshResults').onclick = loadResults;
+
+// ===== 啟動 =====
+refreshHeader();
+route();
+loadStatus();
+setInterval(loadStatus, 15000); // 每 15 秒同步一次庫存與伺服器時間
+setInterval(tick, 250);
+</script>
+</body>
+</html>
