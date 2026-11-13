@@ -100,6 +100,7 @@ function doPost(e) {
       case 'admin_pause':    return out_(adminGuard_(body, adminPause_));
       case 'admin_reset':    return out_(adminGuard_(body, adminReset_));
       case 'admin_addRound': return out_(adminGuard_(body, adminAddRound_));
+      case 'admin_deleteRound': return out_(adminGuard_(body, adminDeleteRound_));
       default:         return out_(fail_('UNKNOWN_ACTION', '不認識的 action：' + body.action));
     }
   } catch (err) {
@@ -291,6 +292,7 @@ function adminOverview_() {
     paused: paused,
     currentRoundId: cur && !paused ? cur.id : null,
     userCount: Object.keys(emails).length,
+    scheduledCount: ROUND_TIMES.length,
     rounds: rounds.map(publicRound_),
     orders: orders.map(function (o) { return Object.assign(o, { email: emails[o.username] || '' }); }),
     attempts: Object.keys(stats).map(function (k) { return stats[k]; }).sort(function (a, b) { return b.attempts - a.attempts; }),
@@ -346,6 +348,28 @@ function adminAddRound_(b) {
     lock.releaseLock();
   }
   log_('(teacher)', 'admin', 'ADD_ROUND', id + (time ? ' ' + time : ''));
+  return adminOverview_();
+}
+
+// 刪除老師新增的場次（原定的 R1～R4 不能刪；有人買到或正在販售中也不能刪）
+function adminDeleteRound_(b) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(8000)) return fail_('BUSY', '伺服器忙碌，請再按一次');
+  try {
+    const now = Date.now();
+    const rounds = getRounds_();
+    const r = rounds.filter(function (x) { return x.id === b.roundId; })[0];
+    if (!r) return fail_('NO_ROUND', '找不到場次 ' + b.roundId);
+    if ((Number(String(r.id).replace(/\D/g, '')) || 0) <= ROUND_TIMES.length) return fail_('CANNOT_DELETE', '原定場次不能刪除');
+    if (r.sold > 0) return fail_('CANNOT_DELETE', r.id + ' 已經有人買到，不能刪除');
+    const cur = currentRound_(rounds, now);
+    if (cur && cur.id === r.id && !isPaused_(cur)) return fail_('CANNOT_DELETE', r.id + ' 正在販售中，請先按「暫停販售」再刪除');
+    sheet_('Rounds').deleteRow(r.row);
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
+  }
+  log_('(teacher)', 'admin', 'DELETE_ROUND', b.roundId);
   return adminOverview_();
 }
 

@@ -156,10 +156,16 @@ function render(d) {
     else if (r.startMs > now) tag = '<span class="tag wait">排程中</span>';
     else tag = '<span class="tag done">已結束</span>';
     const isLive = r.id === curId && !d.paused && r.remaining > 0;
-    const btn = `<button class="green" data-open="${esc(r.id)}" ${r.remaining === 0 || isLive ? 'disabled' : ''}>立即開放</button>`;
+    let btn = `<button class="green" data-open="${esc(r.id)}" ${r.remaining === 0 || isLive ? 'disabled' : ''}>立即開放</button>`;
+    const no = Number(String(r.id).replace(/\D/g, '')) || 0;
+    if (no > d.scheduledCount && r.sold === 0) btn += ` <button class="red" data-del="${esc(r.id)}">刪除</button>`;
     return `<tr><td><b>${esc(r.id)}</b></td><td>${esc(r.startTime)}</td><td>${r.sold} / ${r.stock}</td><td>${tag}</td><td>${btn}</td></tr>`;
   }).join('');
   document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openRound(b.dataset.open));
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    if (!confirm(`確定要刪除 ${b.dataset.del}？`)) return;
+    handle(await api('admin_deleteRound', { roundId: b.dataset.del }), 'dashMsg');
+  });
 
   $('orders').innerHTML = d.orders.length ? d.orders.map(o =>
     `<tr><td>${esc(o.round)}</td><td><b>${esc(o.username)}</b></td><td>${esc(o.email)}</td><td>${esc(o.receiver)}</td><td>${esc(o.address)}</td><td>${esc(o.msAfterOpen)} ms</td><td>${esc(String(o.time).slice(11))}</td></tr>`
