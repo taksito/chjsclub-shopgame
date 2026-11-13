@@ -1,5 +1,11 @@
 # 限量紅茶搶購站 — 學生 API 說明
 
+## 網址
+
+- 🛒 **搶購網頁**：https://taksito.github.io/chjsclub-shopgame/
+- 🔌 **API 位址**（寫程式用）：
+  `https://script.google.com/macros/s/AKfycbxEHvybq2gUOKk0kyinfqYarPvuIxyGZfdUZ2hapUk5qJcoh0zriTil2EUjkxKkSvSw/exec`
+
 你的任務：寫一支程式，在開賣的那一瞬間自動幫你搶到一罐紅茶。
 
 ## 遊戲規則
@@ -15,7 +21,7 @@
 ## API 位址
 
 ```
-API_URL = （老師會公布）
+API_URL = https://script.google.com/macros/s/AKfycbxEHvybq2gUOKk0kyinfqYarPvuIxyGZfdUZ2hapUk5qJcoh0zriTil2EUjkxKkSvSw/exec
 ```
 
 所有請求都用 **POST**，body 是 JSON 文字，必須帶 `action`。
