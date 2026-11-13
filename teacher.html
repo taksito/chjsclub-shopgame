@@ -78,13 +78,20 @@
         <thead><tr><th>場次</th><th>開賣時間</th><th>已售 / 庫存</th><th>狀態</th><th></th></tr></thead>
         <tbody id="rounds"></tbody>
       </table>
+      <div class="bar" style="margin:14px 0 6px;padding:12px;background:var(--cream);border-radius:10px">
+        <b>新增一組</b>
+        <label style="font-size:14px">數量 <input type="number" id="newStock" value="2" min="1" max="20" style="width:64px;padding:6px;border:1px solid var(--line);border-radius:6px"></label>
+        <label style="font-size:14px">開賣時間 <input type="time" id="newTime" style="padding:6px;border:1px solid var(--line);border-radius:6px"></label>
+        <span class="muted" style="font-size:13px">（不填時間＝等你按「立即開放」）</span>
+        <button id="addRound">新增</button>
+      </div>
       <p class="muted" style="font-size:13px">按「立即開放」後，該組馬上開賣，正在賣的那一組會同時結束。設定為自動排程時，原定時間到了，該組一樣會自動開賣。</p>
     </div>
 
     <div class="card">
       <h2>得標名單</h2>
       <table>
-        <thead><tr><th>場次</th><th>帳號</th><th>Email</th><th>收件人</th><th>電話</th><th>地址</th><th>開賣後</th><th>成立時間</th></tr></thead>
+        <thead><tr><th>場次</th><th>帳號</th><th>Email</th><th>收件人</th><th>地址</th><th>開賣後</th><th>成立時間</th></tr></thead>
         <tbody id="orders"></tbody>
       </table>
     </div>
@@ -155,8 +162,8 @@ function render(d) {
   document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openRound(b.dataset.open));
 
   $('orders').innerHTML = d.orders.length ? d.orders.map(o =>
-    `<tr><td>${esc(o.round)}</td><td><b>${esc(o.username)}</b></td><td>${esc(o.email)}</td><td>${esc(o.receiver)}</td><td>${esc(o.phone)}</td><td>${esc(o.address)}</td><td>${esc(o.msAfterOpen)} ms</td><td>${esc(String(o.time).slice(11))}</td></tr>`
-  ).join('') : '<tr><td colspan="8" class="muted">還沒有人搶到</td></tr>';
+    `<tr><td>${esc(o.round)}</td><td><b>${esc(o.username)}</b></td><td>${esc(o.email)}</td><td>${esc(o.receiver)}</td><td>${esc(o.address)}</td><td>${esc(o.msAfterOpen)} ms</td><td>${esc(String(o.time).slice(11))}</td></tr>`
+  ).join('') : '<tr><td colspan="7" class="muted">還沒有人搶到</td></tr>';
 
   $('attempts').innerHTML = d.attempts.length ? d.attempts.map(a =>
     `<tr><td>${esc(a.username)}</td><td>${a.attempts}</td><td>${esc(String(a.first).slice(11))}</td><td class="codes">${
@@ -183,6 +190,10 @@ async function openRound(id) {
   handle(await api('admin_open', { roundId: id }), 'dashMsg');
 }
 
+$('addRound').onclick = async () => {
+  const d = await api('admin_addRound', { time: $('newTime').value, stock: Number($('newStock').value) });
+  if (handle(d, 'dashMsg')) $('newTime').value = '';
+};
 $('pause').onclick = async () => { handle(await api('admin_pause'), 'dashMsg'); };
 $('refresh').onclick = load;
 $('reset').onclick = async () => {

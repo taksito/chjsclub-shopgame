@@ -41,12 +41,13 @@ API_URL = （老師會公布）
 ## 1. 註冊 `register`
 
 ```json
-{ "action": "register", "username": "stu01", "password": "abcd", "email": "stu01@example.com" }
+{ "action": "register", "username": "stu01", "password": "abcd", "email": "stu01@example.com", "name": "王小明", "address": "新北市某某路 1 號" }
 ```
 
 - 帳號：3～20 個英文字母、數字或底線
 - 密碼：4～30 字元
 - Email：只檢查格式
+- 姓名、地址：必填，購買時會當作收件資料
 
 ## 2. 登入 `login`
 
@@ -67,22 +68,11 @@ API_URL = （老師會公布）
 ## 4. 購買 `buy`
 
 ```json
-{
-  "action": "buy",
-  "token": "登入拿到的 token",
-  "password": "abcd",
-  "qty": 1,
-  "payment": "COD",
-  "receiver": "王小明",
-  "phone": "0912345678",
-  "address": "新北市某某路 1 號"
-}
+{ "action": "buy", "token": "登入拿到的 token", "password": "abcd" }
 ```
 
 - `password`：購買時要再確認一次密碼
-- `qty`：只能是 1
-- `payment`：只能是 `"COD"`（貨到付款）
-- `phone`：09 開頭的 10 碼數字
+- 每人 1 罐、貨到付款，收件人和地址自動使用註冊時填的資料
 
 成功時會回傳訂單資訊，其中 `msAfterOpen` 是「開賣後第幾毫秒搶到」。
 
@@ -110,7 +100,7 @@ API_URL = （老師會公布）
 | `BUSY` | 太多人同時搶，伺服器忙 | 馬上再試一次 |
 | `WRONG_PASSWORD` | 確認密碼錯誤 | 檢查密碼 |
 | `INVALID_TOKEN` | 沒登入或登入過期 | 重新 `login` |
-| `BAD_QTY` / `BAD_PAYMENT` / `BAD_PHONE` / `BAD_RECEIVER` / `BAD_ADDRESS` | 資料格式錯誤 | 修正參數 |
+| `BAD_USERNAME` / `BAD_PASSWORD` / `BAD_EMAIL` / `BAD_NAME` / `BAD_ADDRESS` | 註冊資料格式錯誤 | 修正參數 |
 
 ## 思考題
 

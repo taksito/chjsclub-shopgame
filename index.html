@@ -90,6 +90,8 @@
         <label>帳號（3～20 個英文、數字或底線）</label><input type="text" name="username" required>
         <label>密碼（4～30 字元）</label><input type="password" name="password" required>
         <label>Email</label><input type="email" name="email" required>
+        <label>姓名（收件人）</label><input type="text" name="name" required maxlength="30">
+        <label>地址（貨到付款寄送地址）</label><input type="text" name="address" required maxlength="100">
         <button type="submit">註冊</button>
       </form>
       <div id="regMsg"></div>
@@ -114,12 +116,10 @@
     <div class="card">
       <h2>結帳</h2>
       <p>商品：<b id="cName">古早味紅茶（罐裝）</b> × 1　金額：<b>NT$ <span id="cPrice">10</span></b></p>
+      <p>付款方式：<b>貨到付款</b></p>
+      <p>收件人：<b id="cReceiver"></b><br>地址：<b id="cAddress"></b></p>
+      <p class="muted">收件資料為註冊時填寫的內容。</p>
       <form id="buyForm">
-        <label>付款方式</label>
-        <div class="radio"><input type="radio" name="payment" value="COD" checked id="cod"><label for="cod" style="margin:0;font-weight:400">貨到付款</label></div>
-        <label>收件人</label><input type="text" name="receiver" required>
-        <label>手機（09 開頭 10 碼）</label><input type="tel" name="phone" required pattern="09\d{8}">
-        <label>地址</label><input type="text" name="address" required>
         <label>請再次輸入密碼確認購買</label><input type="password" name="password" required>
         <button type="submit">確認購買</button>
       </form>
@@ -192,6 +192,10 @@ function route() {
   if ((p === 'checkout' || p === 'orders') && !token) { location.hash = '#login'; return; }
   pages.forEach(x => document.getElementById('page-' + x).classList.toggle('hidden', x !== p));
   if (p === 'orders') loadOrders();
+  if (p === 'checkout') {
+    document.getElementById('cReceiver').textContent = store.get('name') || '（未填）';
+    document.getElementById('cAddress').textContent = store.get('address') || '（未填）';
+  }
   if (p === 'results') loadResults();
 }
 window.addEventListener('hashchange', route);
@@ -268,7 +272,7 @@ document.getElementById('regForm').onsubmit = async e => {
   const f = e.target, btn = f.querySelector('button');
   btn.disabled = true;
   try {
-    const r = await api('register', { username: f.username.value.trim(), password: f.password.value, email: f.email.value.trim() });
+    const r = await api('register', { username: f.username.value.trim(), password: f.password.value, email: f.email.value.trim(), name: f.name.value.trim(), address: f.address.value.trim() });
     showMsg('regMsg', r.ok, r.message);
     if (r.ok) { f.reset(); setTimeout(() => location.hash = '#login', 800); }
   } catch (err) { showMsg('regMsg', false, '連線失敗：' + err.message); }
@@ -285,6 +289,7 @@ document.getElementById('loginForm').onsubmit = async e => {
     if (r.ok) {
       token = r.token; username = r.username;
       store.set('token', token); store.set('username', username);
+      store.set('name', r.name || ''); store.set('address', r.address || '');
       refreshHeader(); f.reset();
       location.hash = '#shop';
     } else showMsg('loginMsg', false, r.message);
@@ -295,7 +300,7 @@ document.getElementById('loginForm').onsubmit = async e => {
 document.getElementById('logoutLink').onclick = e => {
   e.preventDefault();
   token = null; username = null;
-  store.del('token'); store.del('username');
+  ['token', 'username', 'name', 'address'].forEach(k => store.del(k));
   refreshHeader(); location.hash = '#shop';
 };
 
@@ -305,11 +310,7 @@ document.getElementById('buyForm').onsubmit = async e => {
   const f = e.target, btn = f.querySelector('button');
   btn.disabled = true;
   try {
-    const r = await api('buy', {
-      token, qty: 1, payment: f.payment.value,
-      receiver: f.receiver.value.trim(), phone: f.phone.value.trim(), address: f.address.value.trim(),
-      password: f.password.value,
-    });
+    const r = await api('buy', { token, password: f.password.value });
     if (r.ok) showMsg('buyMsg', true, `${r.message} 訂單編號 ${r.order.orderId}（開賣後 ${r.order.msAfterOpen} 毫秒）`);
     else {
       let text = r.message;
@@ -331,8 +332,8 @@ async function loadOrders() {
     const r = await api('myOrders', { token });
     if (!r.ok) { box.textContent = r.message; return; }
     box.innerHTML = r.orders.length
-      ? '<table><tr><th>訂單編號</th><th>場次</th><th>金額</th><th>付款</th><th>時間</th></tr>' +
-        r.orders.map(o => `<tr><td>${escapeHtml(o.orderId)}</td><td>${o.round}</td><td>NT$ ${o.amount}</td><td>${escapeHtml(o.payment)}</td><td>${escapeHtml(o.time)}</td></tr>`).join('') + '</table>'
+      ? '<table><tr><th>訂單編號</th><th>場次</th><th>金額</th><th>付款</th><th>收件人</th><th>地址</th><th>時間</th></tr>' +
+        r.orders.map(o => `<tr><td>${escapeHtml(o.orderId)}</td><td>${o.round}</td><td>NT$ ${o.amount}</td><td>${escapeHtml(o.payment)}</td><td>${escapeHtml(o.receiver)}</td><td>${escapeHtml(o.address)}</td><td>${escapeHtml(o.time)}</td></tr>`).join('') + '</table>'
       : '還沒有搶到喔！';
   } catch (err) { box.textContent = '連線失敗'; }
 }
