@@ -292,7 +292,6 @@ function adminOverview_() {
     paused: paused,
     currentRoundId: cur && !paused ? cur.id : null,
     userCount: Object.keys(emails).length,
-    scheduledCount: ROUND_TIMES.length,
     rounds: rounds.map(publicRound_),
     orders: orders.map(function (o) { return Object.assign(o, { email: emails[o.username] || '' }); }),
     attempts: Object.keys(stats).map(function (k) { return stats[k]; }).sort(function (a, b) { return b.attempts - a.attempts; }),
@@ -331,8 +330,12 @@ function adminAddRound_(b) {
   let id;
   try {
     const rounds = getRounds_();
-    const maxNo = rounds.reduce(function (m, r) { return Math.max(m, Number(String(r.id).replace(/\D/g, '')) || 0); }, 0);
-    id = 'R' + (maxNo + 1);
+    // 老師新增的場次命名為 pre1、pre2…
+    const maxNo = rounds.reduce(function (m, r) {
+      const mt = /^pre(\d+)$/.exec(String(r.id));
+      return mt ? Math.max(m, Number(mt[1])) : m;
+    }, 0);
+    id = 'pre' + (maxNo + 1);
     const dateStr = CLASS_DATE || today_();
     const sh = sheet_('Rounds');
     const row = sh.getLastRow() + 1;
@@ -351,7 +354,7 @@ function adminAddRound_(b) {
   return adminOverview_();
 }
 
-// 刪除老師新增的場次（原定的 R1～R4 不能刪；有人買到或正在販售中也不能刪）
+// 刪除老師新增的場次 pre#（原定的 R1～R4 不能刪；有人買到或正在販售中也不能刪）
 function adminDeleteRound_(b) {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(8000)) return fail_('BUSY', '伺服器忙碌，請再按一次');
@@ -360,7 +363,7 @@ function adminDeleteRound_(b) {
     const rounds = getRounds_();
     const r = rounds.filter(function (x) { return x.id === b.roundId; })[0];
     if (!r) return fail_('NO_ROUND', '找不到場次 ' + b.roundId);
-    if ((Number(String(r.id).replace(/\D/g, '')) || 0) <= ROUND_TIMES.length) return fail_('CANNOT_DELETE', '原定場次不能刪除');
+    if (!/^pre\d+$/.test(String(r.id))) return fail_('CANNOT_DELETE', '原定場次不能刪除，只能刪除老師新增的 pre 場次');
     if (r.sold > 0) return fail_('CANNOT_DELETE', r.id + ' 已經有人買到，不能刪除');
     const cur = currentRound_(rounds, now);
     if (cur && cur.id === r.id && !isPaused_(cur)) return fail_('CANNOT_DELETE', r.id + ' 正在販售中，請先按「暫停販售」再刪除');

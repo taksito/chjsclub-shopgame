@@ -79,7 +79,7 @@
         <tbody id="rounds"></tbody>
       </table>
       <div class="bar" style="margin:14px 0 6px;padding:12px;background:var(--cream);border-radius:10px">
-        <b>新增一組</b>
+        <b>新增一組（pre#）</b>
         <label style="font-size:14px">數量 <input type="number" id="newStock" value="2" min="1" max="20" style="width:64px;padding:6px;border:1px solid var(--line);border-radius:6px"></label>
         <label style="font-size:14px">開賣時間 <input type="time" id="newTime" style="padding:6px;border:1px solid var(--line);border-radius:6px"></label>
         <span class="muted" style="font-size:13px">（不填時間＝等你按「立即開放」）</span>
@@ -157,8 +157,7 @@ function render(d) {
     else tag = '<span class="tag done">已結束</span>';
     const isLive = r.id === curId && !d.paused && r.remaining > 0;
     let btn = `<button class="green" data-open="${esc(r.id)}" ${r.remaining === 0 || isLive ? 'disabled' : ''}>立即開放</button>`;
-    const no = Number(String(r.id).replace(/\D/g, '')) || 0;
-    if (no > d.scheduledCount && r.sold === 0) btn += ` <button class="red" data-del="${esc(r.id)}">刪除</button>`;
+    if (/^pre\d+$/.test(r.id) && r.sold === 0) btn += ` <button class="red" data-del="${esc(r.id)}">刪除</button>`;
     return `<tr><td><b>${esc(r.id)}</b></td><td>${esc(r.startTime)}</td><td>${r.sold} / ${r.stock}</td><td>${tag}</td><td>${btn}</td></tr>`;
   }).join('');
   document.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openRound(b.dataset.open));
