@@ -191,12 +191,12 @@ function handleBuy_(b) {
   try {
     const t = Date.now(); // 取得鎖之後的時間，才是真正的判定時間
     const ordersSh = sheet_('Orders');
-    const bought = ordersSh.getLastRow() > 1
-      ? ordersSh.getRange(2, 3, ordersSh.getLastRow() - 1, 1).getValues().some(function (r) { return r[0] === username; })
-      : false;
-    if (bought) {
-      result = fail_('ALREADY_BOUGHT', '你已經搶到過了，每人限購 1 罐');
-    } else {
+    // 這個帳號的訂單在哪些場次（欄 B 場次、欄 C 帳號）
+    const myRounds = ordersSh.getLastRow() > 1
+      ? ordersSh.getRange(2, 2, ordersSh.getLastRow() - 1, 2).getValues()
+          .filter(function (r) { return r[1] === username; }).map(function (r) { return String(r[0]); })
+      : [];
+    {
       const rounds = getRounds_();
       const cur = currentRound_(rounds, t);
       const next = nextRound_(rounds, t);
@@ -204,6 +204,12 @@ function handleBuy_(b) {
         result = fail_('NOT_STARTED', '尚未開賣', { nextRound: next ? publicRound_(next) : null });
       } else if (isPaused_(cur)) {
         result = fail_('PAUSED', '老師已暫停販售', { nextRound: next ? publicRound_(next) : null });
+      } else if (isPre_(cur.id) && myRounds.indexOf(cur.id) >= 0) {
+        // pre 測試場：每場每人 1 罐，可以參加很多場 pre
+        result = fail_('ALREADY_BOUGHT', '這一場測試（' + cur.id + '）你已經買過了，等下一場吧');
+      } else if (!isPre_(cur.id) && myRounds.some(function (id) { return !isPre_(id); })) {
+        // 正式場：全部正式場合計每人 1 罐（pre 買過的不算）
+        result = fail_('ALREADY_BOUGHT', '你已經在正式場次搶到過了，正式場每人限購 1 罐');
       } else if (cur.sold >= cur.stock) {
         result = fail_('SOLD_OUT', '本場已售完', { nextRound: next ? publicRound_(next) : null });
       } else {
@@ -251,6 +257,9 @@ function handleResults_() {
 
 // 暫停：記錄暫停時間；只要目前場次是在暫停之前開始的，就視為暫停中。
 // 老師按「立即開放」或下一場時間到，場次開始時間就會晚於暫停時間，自動恢復。
+// pre# 是老師新增的測試場次；R# 是正式場次（決勝負）
+function isPre_(id) { return /^pre\d+$/.test(String(id)); }
+
 function isPaused_(cur) {
   if (!cur) return false;
   const p = Number(PropertiesService.getScriptProperties().getProperty('pausedAt') || 0);
@@ -413,7 +422,7 @@ function nextRound_(rounds, now) {
 }
 
 function publicRound_(r) {
-  return { id: r.id, startTime: r.display, startMs: r.startMs, stock: r.stock, sold: r.sold, remaining: Math.max(0, r.stock - r.sold) };
+  return { id: r.id, type: isPre_(r.id) ? 'test' : 'official', startTime: r.display, startMs: r.startMs, stock: r.stock, sold: r.sold, remaining: Math.max(0, r.stock - r.sold) };
 }
 
 function findUser_(username) {

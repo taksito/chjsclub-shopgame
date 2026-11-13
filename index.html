@@ -64,7 +64,7 @@
       <div style="flex:1;min-width:240px">
         <h2 id="pName">古早味紅茶（罐裝）</h2>
         <div class="price">NT$ <span id="pPrice">10</span></div>
-        <p class="muted">每人限購 1 罐｜只接受貨到付款｜每場 2 罐</p>
+        <p class="muted">正式場（R）每人限搶 1 罐｜pre 測試場可重複練習｜只接受貨到付款</p>
         <div id="liveBox">
           <div class="muted" id="cdLabel">距離下一場開賣</div>
           <div class="countdown" id="countdown">--:--:--</div>
@@ -222,6 +222,10 @@ async function loadStatus() {
   } catch (e) { /* 網路錯誤時下次再試 */ }
 }
 
+function roundLabel(r) {
+  return r.type === 'test' ? `${escapeHtml(r.id)} <span class="tag wait">測試</span>` : `<b>${escapeHtml(r.id)}</b> <span class="tag live">正式</span>`;
+}
+
 function nowServer() { return Date.now() + offset; }
 
 function renderRounds() {
@@ -235,7 +239,7 @@ function renderRounds() {
     else if (r.startMs === null) tag = '<span class="tag wait">等待老師開放</span>';
     else if (r.startMs > now) tag = '<span class="tag wait">未開賣</span>';
     else tag = '<span class="tag done">已結束</span>';
-    return `<tr><td>${r.id}</td><td>${escapeHtml(r.startTime)}</td><td>${r.remaining} / ${r.stock}</td><td>${tag}</td></tr>`;
+    return `<tr><td>${roundLabel(r)}</td><td>${escapeHtml(r.startTime)}</td><td>${r.remaining} / ${r.stock}</td><td>${tag}</td></tr>`;
   }).join('') || '<tr><td colspan="4" class="muted">尚未設定場次</td></tr>';
 }
 
@@ -343,9 +347,10 @@ async function loadResults() {
   const tb = document.getElementById('resultRows');
   try {
     const r = await api('results');
-    tb.innerHTML = r.rounds.map(rd => {
-      if (!rd.winners.length) return `<tr><td>${rd.id}</td><td>${escapeHtml(rd.startTime)}</td><td class="muted">—</td><td></td></tr>`;
-      return rd.winners.map((w, i) => `<tr><td>${i ? '' : rd.id}</td><td>${i ? '' : escapeHtml(rd.startTime)}</td><td>🏆 ${escapeHtml(w.username)}</td><td>${w.msAfterOpen} ms</td></tr>`).join('');
+    const sorted = r.rounds.filter(x => x.type !== 'test').concat(r.rounds.filter(x => x.type === 'test'));
+    tb.innerHTML = sorted.map(rd => {
+      if (!rd.winners.length) return `<tr><td>${roundLabel(rd)}</td><td>${escapeHtml(rd.startTime)}</td><td class="muted">—</td><td></td></tr>`;
+      return rd.winners.map((w, i) => `<tr><td>${i ? '' : roundLabel(rd)}</td><td>${i ? '' : escapeHtml(rd.startTime)}</td><td>🏆 ${escapeHtml(w.username)}</td><td>${w.msAfterOpen} ms</td></tr>`).join('');
     }).join('');
   } catch (err) { tb.innerHTML = '<tr><td colspan="4">連線失敗</td></tr>'; }
 }
